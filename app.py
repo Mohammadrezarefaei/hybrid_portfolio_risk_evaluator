@@ -7,24 +7,24 @@ import seaborn as sns
 st.set_page_config(page_title="Hybrid Portfolio Risk & CVaR", layout="wide")
 
 st.title("🛡️ Hybrid Asset Portfolio Risk & CVaR Evaluator")
-st.markdown("شبیه‌سازی مونت‌کارلو برای ارزیابی ریسک سبد دارایی‌های ترکیبی (خورشیدی + ذخیره‌ساز) در بازارهای Day-Ahead و aFRR.")
+st.markdown("Monte Carlo simulation for evaluating the financial risk of a hybrid asset portfolio (Solar + BESS) participating in Day-Ahead and aFRR markets.")
 
-# تنظیمات نوار کناری (Sidebar)
-st.sidebar.header("پارامترهای شبیه‌سازی")
-confidence_level = st.sidebar.slider("سطح اطمینان (Confidence Level)", min_value=0.90, max_value=0.99, value=0.95, step=0.01)
-num_simulations = st.sidebar.number_input("تعداد سناریوهای مونت‌کارلو", min_value=1000, max_value=50000, value=10000, step=1000)
+# Sidebar Settings
+st.sidebar.header("Simulation Parameters")
+confidence_level = st.sidebar.slider("Confidence Level", min_value=0.90, max_value=0.99, value=0.95, step=0.01)
+num_simulations = st.sidebar.number_input("Number of Monte Carlo Scenarios", min_value=1000, max_value=50000, value=10000, step=1000)
 
-st.sidebar.subheader("پارامترهای بازار (میانگین درآمد روزانه - €)")
-solar_mean = st.sidebar.number_input("خورشیدی (Day-Ahead)", value=1200)
-bess_arb_mean = st.sidebar.number_input("باتری (آربیتراژ)", value=500)
-bess_afrr_mean = st.sidebar.number_input("باتری (aFRR)", value=800)
+st.sidebar.subheader("Market Parameters (Mean Daily Revenue - €)")
+solar_mean = st.sidebar.number_input("Solar (Day-Ahead)", value=1200)
+bess_arb_mean = st.sidebar.number_input("Battery (Arbitrage)", value=500)
+bess_afrr_mean = st.sidebar.number_input("Battery (aFRR)", value=800)
 
-st.sidebar.subheader("نوسانات بازار (انحراف معیار)")
-solar_std = st.sidebar.slider("نوسان خورشیدی", 100, 1000, 400)
-bess_arb_std = st.sidebar.slider("نوسان آربیتراژ", 50, 500, 200)
-bess_afrr_std = st.sidebar.slider("نوسان aFRR", 50, 500, 150)
+st.sidebar.subheader("Market Volatility (Standard Deviation)")
+solar_std = st.sidebar.slider("Solar Volatility", 100, 1000, 400)
+bess_arb_std = st.sidebar.slider("Arbitrage Volatility", 50, 500, 200)
+bess_afrr_std = st.sidebar.slider("aFRR Volatility", 50, 500, 150)
 
-# 1. تولید داده‌های پایه و ماتریس کوواریانس
+# 1. Generate Base Data and Covariance Matrix
 np.random.seed(42)
 days = 365
 df_historical = pd.DataFrame({
@@ -36,11 +36,11 @@ df_historical = pd.DataFrame({
 mean_returns = df_historical.mean()
 cov_matrix = df_historical.cov()
 
-# 2. اجرای شبیه‌سازی مونت‌کارلو
+# 2. Run Monte Carlo Simulation
 simulated_revenues = np.random.multivariate_normal(mean_returns, cov_matrix, num_simulations)
 portfolio_simulated_rev = np.sum(simulated_revenues, axis=1)
 
-# 3. محاسبه متریک‌های ریسک
+# 3. Calculate Risk Metrics
 sorted_revenues = np.sort(portfolio_simulated_rev)
 index_at_risk = int((1 - confidence_level) * num_simulations)
 
@@ -49,16 +49,16 @@ CVaR = sorted_revenues[:index_at_risk].mean()
 mean_expected = portfolio_simulated_rev.mean()
 max_loss = mean_expected - CVaR
 
-# نمایش کارت‌های نتایج
+# Display Metrics Cards
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Mean Expected Revenue", f"€{mean_expected:,.0f}")
-col2.metric(f"VaR ({int(confidence_level*100)}%)", f"€{VaR:,.0f}", "آستانه ریسک", delta_color="inverse")
-col3.metric(f"CVaR ({int(confidence_level*100)}%)", f"€{CVaR:,.0f}", "میانگین در بحران", delta_color="inverse")
+col2.metric(f"VaR ({int(confidence_level*100)}%)", f"€{VaR:,.0f}", "Risk Threshold", delta_color="inverse")
+col3.metric(f"CVaR ({int(confidence_level*100)}%)", f"€{CVaR:,.0f}", "Average in Worst-Case", delta_color="inverse")
 col4.metric("Max Potential Loss", f"€{max_loss:,.0f}")
 
 st.divider()
 
-# 4. رسم نمودار توزیع ریسک
+# 4. Plot Risk Distribution
 fig, ax = plt.subplots(figsize=(12, 5))
 plt.style.use('seaborn-v0_8-whitegrid')
 
